@@ -1,48 +1,65 @@
-const { RichEmbed } = require("discord.js");
+const Discord = require("discord.js");
+const db = require("quick.db");
+const ms = require("parse-ms");
 
-exports.run = async (xtal, message, args, colors, emojis) => {
-
-  let user = message.member;
-  let amount = parseInt(args[0], 10);
-  if(!amount || isNaN(amount)) return xtal.cmdErr(message, 'Specify a Amount to Deposit', 'deposit');
-  let balance = await xtal.eco.fetch(`eco_${user.user.id}`);
-  if(balance == null) balance = 0;
-  let bankbalance = await xtal.eco.fetch(`bank_${user.user.id}`);
-  if(bankbalance == null) bankbalance = 0;
-
-  if (message.content.includes('-')) return xtal.cmdErr(message, 'Enter a Positive Amount.', 'gamble');
-
-  if(amount > bankbalance) return xtal.cmdErr(message, 'You are Poor Mate.', 'transfer');
-
-    await xtal.eco.add(`eco_${user.user.id}`, amount)
-    await xtal.eco.subtract(`bank_${user.user.id}`, amount);
-
-    let afbalance = await xtal.eco.fetch(`eco_${user.user.id}`);
-    if(afbalance == null) afbalance = 0;
-    let afbankbalance = await xtal.eco.fetch(`bank_${user.user.id}`);
-    if(afbankbalance == null) afbankbalance = 0;
-
-    let embed = new RichEmbed()
-    .setAuthor(`Xtal Crystals Repo`, `https://cdn.discordapp.com/emojis/` + emojis.crystalsid)
-    .setColor(colors.cyan)
-    .setDescription(`Tranferred **${amount}** Crystals from your Bank to Wallet!`)
-    .addField(`Current Repo`, `Wallet: **${afbalance}** Crystals\n Bank: **${afbankbalance}** Crystals`)
-    .setTimestamp()
-    .setFooter(xtal.user.username, xtal.user.avatarURL);
-
-    message.channel.send(embed)
-
-};
-
-exports.help = {
+    module.exports = {
   name: "withdraw",
-  aliases: []
-};
+  aliases: ["with"],
+  execute: async(client, message, args) => {
 
-exports.conf = {
-  usage: "withdraw [amount]",
-  aliases: "None.",
-  description: "Withdraw Crystals from Bank to Wallet.",
-  category: "Economy",
-  cooldown: 10
-};
+  let user = message.author;
+
+  let member = db.fetch(`money_${message.author.id}`)
+  let member2 = db.fetch(`bank_${message.author.id}`)
+
+  if (args[0] == 'all') {
+    let money = await db.fetch(`bank_${message.author.id}`)
+    
+    db.subtract(`bank_${message.author.id}`, money)
+    db.add(`money_${message.author.id}`, money)
+    let embed5 = new Discord.MessageEmbed()
+  .setColor("RANDOM")
+  .setDescription(`<:Check:618736570337591296> You have withdrawn all your coins from your bank`);
+  message.channel.send(embed5)
+  
+  } else {
+
+  let embed2 = new Discord.MessageEmbed()
+  .setColor("RANDOM")
+  .setDescription(`<:Cross:618736602901905418> Specify an amount to withdraw`);
+  
+  if (!args[0]) {
+      return message.channel.send(embed2)
+  }
+  let embed3 = new Discord.MessageEmbed()
+  .setColor("RANDOM")
+  .setDescription(`<:Cross:618736602901905418> You can't withdraw negative money`);
+
+  if (message.content.includes('-')) { 
+      return message.channel.send(embed3)
+  }
+  let embed4 = new Discord.MessageEmbed()
+  .setColor("RANDOM")
+  .setDescription(`<:Cross:618736602901905418> You don't have that much money in the bank`);
+
+  if (member2 < args[0]) {
+      return message.channel.send(embed4)
+  }
+
+  let embed5 = new Discord.MessageEmbed()
+  .setColor("RANDOM")
+  .setDescription(`<:Check:618736570337591296> You have withdrawn ${args[0]} coins from your bank`);
+
+  message.channel.send(embed5)
+  db.subtract(`bank_${message.author.id}`, args[0])
+  db.add(`money_${message.author.id}`, args[0])
+  }
+}
+    }
+
+module.exports.help = {
+    name: "withdraw",
+    description: "Withdraw money from bank",
+    usage: "withdraw <money>",
+    type: "Economy"  
+}
