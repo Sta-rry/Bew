@@ -1,100 +1,155 @@
-const YouTube = require("simple-youtube-api");
-const ytdl = require("ytdl-core");
-const youtube = new YouTube(process.env.YTTOKEN);
-var { getData, getPreview } = require("spotify-url-info");
-var lookup = require('soundcloud-lookup');
-
-exports.run = async (xtal, message, args, colors, emojis) => {
-  try {
-    const searchargs = message.content.split(" ");
-    let searchString = searchargs.slice(1).join(" ");
-    const serverQueue = xtal.queue.get(message.guild.id);
-    const url = searchargs[1] ? searchargs[1].replace(/<(.+)>/g, "$1") : "";
-    const m = await message.channel.send(
-      `Searching for \`${searchString}\`...`
-    );
-
-    const voiceChannel = message.member.voiceChannel;
-    if (
-      !voiceChannel ||
-      (message.guild.me.voiceChannel &&
-        message.guild.me.voiceChannel !== message.member.voiceChannel)
-    )
-      return message.channel.send(
-        "I'm sorry but you need to be in a voice channel to play music!"
-      );
-    const permissions = voiceChannel.permissionsFor(message.client.user);
-    if (!permissions.has("CONNECT")) {
-      return message.channel.send(
-        "I cannot connect to your voice channel, make sure I have the proper permissions!"
-      );
-    }
-    if (!permissions.has("SPEAK")) {
-      return message.channel.send(
-        "I cannot speak in this voice channel, make sure I have the proper permissions!"
-      );
-    }
-
-    if (url.match(/^https?:\/\/(www.youtube.com|youtube.com)\/playlist(.*)$/)) {
-      const playlist = await youtube.getPlaylist(url);
-      const videos = await playlist.getVideos();
-      for (const video of Object.values(videos)) {
-        const video2 = await youtube.getVideoByID(video.id); // eslint-disable-line no-await-in-loop
-        await xtal.handleVideo(video2, message, voiceChannel, true); // eslint-disable-line no-await-in-loop
-      }
-      message.channel.send(
-        `${emojis.circle_tick} **${playlist.title}** (Playlist) has been added to the queue!`
-      );
-      m.delete();
-      return;
-    } else {
-      try {
-        var video = await youtube.getVideo(url);
-      } catch (error) {
-        try {
-          if (
-            /^(https:\/\/(open|play)\.spotify\.com\/(track)\/)/.test(
-              searchString
-            )
-          ) {
-            const info = await getData(url).catch(console.log);
-            let artists = [];
-            info.artists.forEach(x => artists.push(x.name));
-            searchString = `${info.name} ${artists.join(" ")}`;
-          }
-          if (
-            /^https?:\/\/(soundcloud\.com|snd\.sc)\/(.*)$/.test(
-              searchString
-            )
-          ) {
-            lookup(searchString, process.env.SOUNDCLOUD, function(err, song) {
-              searchString = `${song.title}`;
-            });
-          }
-          var videos = await youtube.searchVideos(searchString, 1);
-          var video = await youtube.getVideoByID(videos[0].id);
-        } catch (err) {
-          console.error(err);
-          message.channel.send("🆘 I could not obtain any search results.");
-          m.delete();
-          return;
-        }
-      }
-      xtal.handleVideo(video, message, voiceChannel);
-      m.delete();
-      return;
-    }
-  } catch (e) {}
-};
-
-exports.help = {
+const ytdl = require("ytdl-core-discord");
+var scrapeYt = require("scrape-yt");
+const discord = require("discord.js");
+var { SearchOptions } = require("scrape-yt");
+const client = new discord.Client();
+const db = require("quick.db");
+module.exports = {
   name: "play",
-  aliases: ["pl"]
-};
+  aliases: ["p"],
+  execute: async(client, message, args) => {
 
-exports.conf = {
-  usage: "play [song/url]",
-  aliases: "pl",
-  description: "Plays the Song. Allowed URL: YouTube Spotify.",
-  category: "Music"
-};
+    if(!args[0]) return message.channel.send('You didn\'t provide a song to play!')
+    let channel = message.member.voice.channel;
+    if(!channel) return message.channel.send('You need to join a voice channel to play a music!')
+
+    if (!channel.permissionsFor(message.client.user).has("CONNECT")) return message.channel.send('I don\'t have permission to join the voice channel')
+
+    if (!channel.permissionsFor(message.client.user).has("SPEAK"))return message.channel.send('I don\'t have permission to speak in the voice channel')
+
+   
+
+    const server = message.client.queue.get(message.guild.id);
+    var video = await scrapeYt.search(args.join(' '))
+    var result = video[0];
+    if(!video[0])
+        {
+          
+           return message.reply("Currently playlist is not support in the bot");
+        }
+    
+
+    const song = {
+        id: result.id,
+        title: result.title,
+        duration: result.duration,
+        thumbnail: result.thumbnail,
+        upload: result.uploadDate,
+        views: result.viewCount,
+        requester: message.author,
+        channel: result.channel.name,
+        channelurl: result.channel.url
+      };
+
+    var date = new Date(0);
+    date.setSeconds(song.duration); // specify value for SECONDS here
+    var timeString = date.toISOString().substr(11, 8);
+
+      if (server) {
+        server.songs.push(song);
+        console.log(server.songs);
+        let embed = new discord.MessageEmbed()
+        .setTitle('Added to queue!')
+        .setColor('#00fff1')
+        .addField('Name', song.title, true)
+        .setThumbnail(song.thumbnail)
+        .addField('Views', song.views, true)
+        .addField('Reqeusted By', song.requester, true)
+        .addField('Duration', timeString, true)
+        return message.channel.send(embed)
+    }
+
+    const queueConstruct = {
+        textChannel: message.channel,
+        voiceChannel: channel,
+        connection: null,
+        songs: [],
+        volume: 1,
+        playing: true
+    };
+    message.client.queue.set(message.guild.id, queueConstruct);
+    queueConstruct.songs.push(song);
+
+
+    const play = async song => {
+        const queue = message.client.queue.get(message.guild.id);
+            var prefix =  db.fetch(`two_${message.guild.id}`);
+    if(prefix === "yes")
+    {
+       if (!song) {
+              for (let member of channel.members) {
+            member[1].voice.setMute(false)
+        }
+            message.client.queue.delete(message.guild.id);
+            message.channel.send('There are no songs in queue')
+            return;
+        }
+       
+    } else 
+    {
+      if(!song)
+      {
+          var prefix1 =  db.fetch(`guildprefix_${message.guild.id}`);
+    if(!prefix1)
+    {
+      var prefix1 = ".";
+    }
+         for (let member of channel.members) {
+            member[1].voice.setMute(false)
+        }
+        
+        queue.voiceChannel.leave();
+            message.client.queue.delete(message.guild.id);
+            message.channel.send(`There are no songs in queue, I\'m leaving the voice channel! You turn this off by doing ${prefix1}24/7`)
+            return;
+      }
+    }
+       
+
+        const dispatcher = queue.connection.play(await ytdl(`https://youtube.com/watch?v=${song.id}`, {
+            filter: format => ['251'],
+            highWaterMark: 1 << 25
+        }), {
+            type: 'opus'
+        })
+            .on('finish', () => {
+                queue.songs.shift();
+                play(queue.songs[0]);
+            })
+            .on('error', error => console.error(error));
+            
+        dispatcher.setVolumeLogarithmic(0.57);
+        let noiceEmbed = new discord.MessageEmbed()
+        .setTitle('Started Playing')
+        .setThumbnail(song.thumbnail)
+        .addField('Name', song.title, true)
+        .addField('Requested By', song.requester, true)
+        .addField('Views', song.views, true)
+        .addField('Duration', timeString, true)
+        queue.textChannel.send(noiceEmbed);
+    };
+
+
+    try {
+        const connection = await channel.join();
+        queueConstruct.connection = connection;
+        play(queueConstruct.songs[0]);
+        connection.voice.setSelfDeaf(true);
+         
+         
+        const member1 = "828959241586606110";
+      
+    } catch (error) {
+        console.error(`I could not join the voice channel`);
+        message.client.queue.delete(message.guild.id);
+        await channel.leave();
+        return message.channel.send(`I could not join the voice channel: ${error}`);
+    }
+}
+}
+module.exports.help = {
+    name: "play",
+    description: "It plays a music",
+    usage: "play <music_name>",
+    type: "Music" 
+}

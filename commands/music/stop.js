@@ -1,35 +1,53 @@
-const YouTube = require('simple-youtube-api');
-const ytdl = require('ytdl-core');
-const youtube = new YouTube(process.env.YTTOKEN);
-
-
-exports.run = async (xtal, message, args) => {
-  
-  try {
-  const serverQueue = xtal.queue.get(message.guild.id);  
-  if (!message.member.voiceChannel || (message.guild.me.voiceChannel && message.member.voiceChannel && message.guild.me.voiceChannel !== message.member.voiceChannel)) return message.channel.send('You are not in a voice channel!');
-	if (serverQueue) {
-    serverQueue.songs = [];
-		serverQueue.connection.dispatcher.end('Stop command has been used!');
-    return undefined;
-  }
-  if (message.guild.me.voiceChannel && message.guild.me.voiceChannel == message.member.voiceChannel) {
-    let vcname = message.guild.me.voiceChannel.name;
-    message.guild.me.voiceChannel.leave();
-    xtal.simpleEmbed(message, `Disconnected from **${vcname}**`);
-  } else return message.channel.send('There is nothing playing that I could stop for you.');
-  } catch(e) {}
-  
-};
-
-exports.help = {
+const db = require("quick.db");
+const { MessageEmbed } = require("discord.js");
+module.exports = {
   name: "stop",
-  aliases: ['st', 'leave', 'disconnect', 'dc']
-};
+  aliases: ["clearq", "clearqueue", "queueclear", "qclear", "musicbug", "bugmusic"],
+  execute: async(client, message, args) => {
+    const channel = message.member.voice.channel;
+    if (!channel) return message.channel.send('You should join a voice channel before using this command!');
+    let queue = message.client.queue.get(message.guild.id)
+    if(!queue) return message.channel.send({
+        embed: {
+            description: 'There is nothing playing to be stopped!',
+            color: 'BLACK'
+        }
+    })
+    message.react('✅')
+    queue.songs = []
+    queue.connection.dispatcher.end('Stopped!')
+    
+            var prefix =  db.fetch(`two_${message.guild.id}`);
+    if(prefix === "yes")
+    {
+       if (!queue) {
+            
+            message.client.queue.delete(message.guild.id);
+            message.channel.send('There are no songs in queue')
+            return;
+        }
+       
+    } else 
+    {
+      if(!queue)
+      {
+          var prefix1 =  db.fetch(`guildprefix_${message.guild.id}`);
+    if(!prefix1)
+    {
+      var prefix1 = ".";
+    }
 
-exports.conf = {
-  usage: "stop",
-  aliases: "st, leave, disconnect, dc",
-  description: "Stops the Current Song and Clears the Queue.",
-  category: "Music"
-};
+        queue.voiceChannel.leave();
+            message.client.queue.delete(message.guild.id);
+            message.channel.send(`There are no songs in queue, I\'m leaving the voice channel! You turn this off by doing ${prefix1}24/7`)
+            return;
+      }
+    }
+}
+}
+module.exports.help = {
+    name: "stop",
+    description: "Will stop the current all playing music",
+    usage: "stop",
+    type: "Music" 
+}

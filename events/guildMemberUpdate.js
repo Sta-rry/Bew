@@ -1,90 +1,76 @@
-const db = require("quick.db");
-const colors = require("../colors.json");
-const Discord = require("discord.js");
+const Discord = require('discord.js');
+const config = require("../config");
+const db = require("quick.db")
+module.exports = async (client, oldMember, newMember) => {
 
-module.exports = async (xtal, user, newUser) => {
-
-  if(!newUser.guild) return;
-  let mod = await db.fetch(`guildLogs_${newUser.guild.id}`);
-  if(mod == null || mod == 'None.') return;
-  else {
-  let channel = xtal.channels.get(mod);
-  if(channel) {
-
-if (user.nickname !== newUser.nickname) {
-
-let embed = new Discord.RichEmbed()
-  .setTitle('Member Nickname Updated')
-  .setTimestamp()
-  .setDescription(`User: ${newUser.user.tag} | ID: ${newUser.id}`)
-  .setThumbnail(user.user.avatarURL)
-  .addField('Before', user.nickname)
-  .addField('After', newUser.nickname)
-  .setColor(colors.green)
-  .setFooter(xtal.user.username, xtal.user.avatarURL);
-  
-  channel.send(embed)
-}
-
-if (user.user.tag !== newUser.user.tag) {
-
-    let embed = new Discord.RichEmbed()
-    .setTitle('Member Tag Updated')
+try {
+ var logChannel = oldMember.guild.channels.cache.find(c => c.name === "dumb-logs");
+ if (!logChannel) return;
+ oldMember.guild.fetchAuditLogs().then(logs => {
+  var userID = logs.entries.first().executor.id;
+  var userAvatar = logs.entries.first().executor.avatarURL();
+  var userTag = logs.entries.first().executor.tag;
+  if (oldMember.nickname !== newMember.nickname) {
+   if (oldMember.nickname === null) {
+    var oldNM = "``???? ??????``";
+   } else {
+    var oldNM = oldMember.nickname;
+   }
+   if (newMember.nickname === null) {
+    var newNM = "``???? ??????``";
+   } else {
+    var newNM = newMember.nickname;
+   }
+   let updateNickname = new Discord.MessageEmbed()
+    .setTitle("**UPDATE MEMBER NICKNAME**")
+    .setThumbnail(userAvatar)
+    .setColor("RANDOM")
+    .setDescription(`**\n**:spy: Successfully \`\`CHANGE\`\` Member Nickname.\n\n**User:** ${oldMember} (ID: ${oldMember.id})\n**Old Nickname:** ${oldNM}\n**New Nickname:** ${newNM}\n**By:** <@${userID}> (ID: ${userID})`)
     .setTimestamp()
-    .addField(`Before`, `User: ${user.user.tag} | ID: ${user.id}`)
-    .addField(`After`, `User: ${newUser.user.tag} | ID: ${newUser.id}`)
-    .setThumbnail(user.user.avatarURL)
-    .setColor(colors.magneta)
-    .setFooter(xtal.user.username, xtal.user.avatarURL);
-    
-    channel.send(embed)
-
-}
-
-if (user.roles !== newUser.roles) {
-
-    let output = '';
-    let outputNew = '';
-    
-    user.roles.forEach(role => {
-      output += '\n' + role.name;
-    });
-    
-    newUser.roles.forEach(role => {
-      outputNew += '\n' + role.name;
-    });
-    
-    if (output == outputNew) return;
-    
-    let embed = new Discord.RichEmbed()
-    .setTitle('Member Roles Updated')
-    .setDescription(`User: ${newUser.user.tag} | ID: ${newUser.id}`)
-    .addField(`Before`, output)
-    .addField(`After`, outputNew)
-    .setColor(colors.green)
-    .setThumbnail(newUser.user.avatarURL)
-    .setFooter(xtal.user.username, xtal.user.avatarURL);
-
-    channel.send(embed)
-    
-}
-
-if (user.user.avatarURL !== newUser.user.avatarURL) {
-
-    let embed = new Discord.RichEmbed()
-    .setTitle('Member Avatar Updated')
+    .setFooter(oldMember.guild.name, oldMember.guild.iconURL());
+   logChannel.send(updateNickname);
+ 
+  }
+  if (oldMember.roles.cache.size < newMember.roles.cache.size) {
+   let role = newMember.roles.cache.filter(r => !oldMember.roles.cache.has(r.id)).first();
+   let roleAdded = new Discord.MessageEmbed()
+    .setTitle("**ADDED ROLE TO MEMBER**")
+    .setThumbnail(oldMember.guild.iconURL())
+    .setColor("RANDOM")
+    .setDescription(`**\n**:white_check_mark: Successfully \`\`ADDED\`\` Role to **${oldMember.user.username}**\n\n**User:** <@${oldMember.id}> (ID: ${oldMember.user.id})\n**Role:** \`\`${role.name}\`\` (ID: ${role.id})\n**By:** <@${userID}> (ID: ${userID})`)
     .setTimestamp()
-    .setDescription(`User: ${newUser.user.tag} | ID: ${newUser.id}`)
-    .addField(`Before`, `${user.user.avatarURL}`)
-    .addField(`After`, `${newUser.user.avatarURL}`)
-    .setThumbnail(user.user.avatarURL)
-    .setImage(newUser.user.avatarURL)
-    .setColor(colors.cyan)
-    .setFooter(xtal.user.username, xtal.user.avatarURL);
-    
-    channel.send(embed)
-
+    .setFooter(userTag, userAvatar);
+   logChannel.send(roleAdded);
+   }
+   if (oldMember.roles.cache.size > newMember.roles.cache.size) {
+    let role = oldMember.roles.cache.filter(r => !newMember.roles.cache.has(r.id)).first();
+    let roleRemoved = new Discord.MessageEmbed()
+     .setTitle("**REMOVED ROLE FROM MEMBER**")
+     .setThumbnail(oldMember.guild.iconURL())
+     .setColor("RANDOM")
+   .setDescription(`**\n**:negative_squared_cross_mark: Successfully \`\`REMOVED\`\` Role from **${oldMember.user.username}**\n\n**User:** <@${oldMember.user.id}> (ID: ${oldMember.id})\n**Role:** \`\`${role.name}\`\` (ID: ${role.id})\n**By:** <@${userID}> (ID: ${userID})`)
+    .setTimestamp()
+    .setFooter(userTag, userAvatar);
+   logChannel.send(roleRemoved);
+  }
+ });
+ if (oldMember.guild.owner.user.id !== newMember.guild.owner.user.id) {
+  let newOwner = new Discord.MessageEmbed()
+   .setTitle("**UPDATE GUILD OWNER**")
+   .setThumbnail(oldMember.guild.iconURL())
+   .setColor("RANDOM")
+   .setDescription(`**\n**:white_check_mark: Successfully \`\`TRANSFER\`\` The OwnerShip.\n\n**Old Owner:** <@${oldMember.user.id}> (ID: ${oldMember.user.id})\n**New Owner:** <@${newMember.user.id}> (ID: ${newMember.user.id})`)
+   .setTimestamp()
+   .setFooter(oldMember.guild.name, oldMember.guild.iconURL());
+  logChannel.send(newOwner);
+ } 
+} catch (err) {
+ let embed = new Discord.MessageEmbed()
+  .setColor("#FF0000")
+  .setTitle("Error!")
+  .setDescription("**Error Code:** *" + err + "*")
+  .setTimestamp();
+ console.log(err);
 }
 
-}}
-};
+}

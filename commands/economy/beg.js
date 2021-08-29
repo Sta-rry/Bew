@@ -1,45 +1,42 @@
-const { RichEmbed } = require("discord.js");
+const Discord = require("discord.js");
 const db = require("quick.db");
+const ms = require("parse-ms");
 
-exports.run = async (xtal, message, args, colors, emojis) => {
-
-  let user = message.member;
-
-  let balance = await xtal.eco.fetch(`eco_${user.user.id}`);
-  if(balance == null) balance = 0;
-  let bankbalance = await xtal.eco.fetch(`bank_${user.user.id}`);
-  if(bankbalance == null) bankbalance = 0;
-
-  let money = Math.floor((Math.random() * 100));
-  let donor = donator();
-
-  await xtal.eco.add(`eco_${user.user.id}`, money)
-
-  let embed = new RichEmbed()
-  .setAuthor(`Xtal Crystals Repo`, `https://cdn.discordapp.com/emojis/` + emojis.crystalsid)
-  .setTimestamp()
-  .setColor(colors.cyan)
-  .setDescription(`**${donor}** donated you **${money}** Crystals.`)
-  .setFooter(xtal.user.username, xtal.user.avatarURL);
-  
-  message.channel.send(embed);
-  
-  };
-
-exports.help = {
+module.exports = {
   name: "beg",
-  aliases: []
-};
+  aliases: ["dedo"],
+  execute: async(client, message, args) => {
 
-exports.conf = {
-  usage: "beg",
-  aliases: "None.",
-  description: "Beg for Crystals.",
-  category: "Economy",
-  cooldown: 60
-};
+  let user = message.author;
 
-function donator() {
-    var rand = ["PewDiePie", "Zyrouge", "Xeno", "Thanos", "Rio", "Antiquency", "Aurumz", "Zkate", "Iron Man", "Lord Gaben", "Your Mom", "Voltrex", "Thiru", "Eon", "Kokktur", "TheAnimatedStick", "Clyde"]
-    return rand[Math.floor(Math.random()*rand.length)];
+  let timeout = 180000;
+  let amount = 5;
+
+  let beg = await db.fetch(`beg_${message.author.id}`);
+
+  if (beg !== null && timeout - (Date.now() - beg) > 0) {
+    let time = ms(timeout - (Date.now() - beg));
+  
+    let timeEmbed = new Discord.MessageEmbed()
+    .setColor(16734039)
+    .setDescription(`You've already begged recently\n\nBeg again in ${time.minutes}m ${time.seconds}s `);
+    message.channel.send(timeEmbed)
+  } else {
+    let moneyEmbed = new Discord.MessageEmbed()
+  .setColor("RANDOM")
+  .setDescription(`:white_check_mark:  You've begged and received ${amount} coins | poor guy ewww`);
+  message.channel.send(moneyEmbed)
+  db.add(`money_${message.author.id}`, amount)
+  db.set(`beg_${message.author.id}`, Date.now())
+
+
+  }
+}}
+
+
+module.exports.help = {
+    name: "beg",
+    description: "Beg money",
+    usage: "beg",
+    type: "Economy"  
 }

@@ -1,29 +1,26 @@
-const YouTube = require('simple-youtube-api');
-const ytdl = require('ytdl-core');
-const youtube = new YouTube(process.env.YTTOKEN);
-
-
-exports.run = async (xtal, message, args) => {
-  
-  try {
-  const serverQueue = xtal.queue.get(message.guild.id);
-  if (!message.member.voiceChannel || (message.guild.me.voiceChannel && message.guild.me.voiceChannel !== message.member.voiceChannel)) return message.channel.send('You are not in a voice channel!');
-	if (!serverQueue) return message.channel.send('There is nothing playing that I could skip for you.');
-  serverQueue.loop = 0;
-  serverQueue.connection.dispatcher.end('skip');
-  return undefined;
-  } catch(e) {}
-  
-};
-
-exports.help = {
+module.exports = {
   name: "skip",
-  aliases: ['sk', 'next']
-};
-
-exports.conf = {
-  usage: "skip",
-  aliases: "sk",
-  description: "Skips the Current Song.",
-  category: "Music"
-};
+  aliases: [],
+  execute: async(client, message, args, data, db) => {
+    const channel = message.member.voice.channel;
+    if (!channel) return message.channel.send('You should join a voice channel before using this command!');
+    let queue = message.client.queue.get(message.guild.id)
+    if(!queue){ return message.channel.send({
+        embed: {
+            description: 'There is nothing in the queue right now! add using `m!play <songName>`',
+            color: 'BLACK'
+        }
+    })
+}
+    if(queue.songs.length !== 0) {
+        message.react('✅')
+        queue.connection.dispatcher.end('Okie skipped!')
+    }
+}
+}
+module.exports.help = {
+    name: "skip",
+    description: "Skips the current playing music",
+    usage: "skip",
+    type: "Music" 
+}

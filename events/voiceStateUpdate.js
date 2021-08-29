@@ -1,67 +1,95 @@
-const db = require("quick.db");
-const colors = require("../colors.json");
-const Discord = require("discord.js");
+const Discord = require('discord.js');
+const config = require("../config");
 
-module.exports = async (xtal, oldMember, newMember) => {
+module.exports = async (client, oldState, newState, guild) => {
 
-  if (!newMember.guild) return;
-  let mod = await db.fetch(`guildLogs_${newMember.guild.id}`);
-  if(mod == null || mod == 'None.') return;
-  else {
-  let channel = xtal.channels.get(mod);
-  if(channel) {
-
-  let oldchannel = oldMember.voiceChannel;
-  let newchannel = newMember.voiceChannel;
-
-  if(oldchannel === undefined && newchannel !== undefined) {
-
-  let embed = new Discord.RichEmbed()
-  .setTitle('Member Joined VC')
-  .setThumbnail(newMember.user.displayAvatarURL)
-  .setTimestamp()
-  .addField(`Member Info`, `${newMember.user.tag} | ${newMember.user.id}`)
-  .addField(`Voice Channel Info`, `${newchannel} | ${newchannel.name} | ${newchannel.id}`)
-  .setColor(colors.magenta)
-  .setFooter(xtal.user.username, xtal.user.avatarURL);
-  
-  channel.send(embed)
-
-  } else if(oldchannel !== undefined && newchannel === undefined) {
-
-    const serverQueue = xtal.queue.get(newMember.guild.id);
-    if(serverQueue && newMember.guild.me.voiceChannel && newMember.guild.me.voiceChannel.members.size == 1) {
-      serverQueue.songs = [];
-      serverQueue.textChannel.send(`I left the Voice Channel as none are Listening.`);
-      await serverQueue.connection.dispatcher.end();
-    }
-
-    let embed = new Discord.RichEmbed()
-    .setTitle('Member Left VC')
-    .setThumbnail(newMember.user.avatarURL)
+try {
+ var logChannel = oldState.guild.channels.cache.find(c => c.name === 'dumb-logs');  
+ if (!logChannel) return;
+ oldState.guild.fetchAuditLogs().then(logs => {
+  var userID = logs.entries.first().executor.id;
+  var userTag = logs.entries.first().executor.tag;
+  var userAvatar = logs.entries.first().executor.avatarURL();
+  if (oldState.serverMute === false && newState.serverMute === true) {
+   let serverMutev = new Discord.MessageEmbed()
+    .setTitle("**VOICE MUTE**")
+    .setThumbnail(oldState.user.avatarURL())
+    .setColor("RANDOM")
+    .setDescription(`**User:** <@${oldState.user.id}> (ID: ${oldState.user.id})\n**By:** <@${userID}> (ID: ${userID})\n**Channel:** \`\`${oldState.voiceChannel.name}\`\` (ID: ${oldState.voiceChannel.id})`)
     .setTimestamp()
-    .addField(`Member Info`, `${newMember.user.tag} | ${newMember.user.id}`)
-    .addField(`Voice Channel Info`, `${oldchannel} | ${oldchannel.name} | ${oldchannel.id}`)
-    .setColor(colors.magenta)
-    .setFooter(xtal.user.username, xtal.user.avatarURL);
-    
-    channel.send(embed)
-  
-    } else if (oldchannel !== undefined && newchannel !== undefined) {
-
-    let embed = new Discord.RichEmbed()
-    .setTitle('Member Moved VC')
-    .setThumbnail(newMember.user.avatarURL)
+    .setFooter(userTag, userAvatar);
+   logChannel.send(serverMutev);
+  }
+  if (oldState.serverMute === true && newState.serverMute === false) {
+   let serverUnmutev = new Discord.MessageEmbed()
+    .setTitle("**VOICE UNMUTE**")
+    .setThumbnail(oldState.user.avatarURL())
+    .setColor("RANDOM")
+    .setDescription(`**User:** <@${oldState.user.id}> (ID: ${oldState.user.id})\n**By:** <@${userID}> (ID: ${userID})\n**Channel:** \`\`${oldState.voiceChannel.name}\`\` (ID: ${oldState.voiceChannel.id})`)
     .setTimestamp()
-    .addField(`Member Info`, `${newMember.user.tag} | ${newMember.user.id}`)
-    .addField(`Before VC Info`, `${oldchannel} | ${oldchannel.name} | ${oldchannel.id}`)
-    .addField(`After VC Info`, `${newchannel} | ${newchannel.name} | ${newchannel.id}`)
-    .setColor(colors.magenta)
-    .setFooter(xtal.user.username, xtal.user.avatarURL);
+   .setFooter(userTag, userAvatar);
+   logChannel.send(serverUnmutev);
+  }
+  if (oldState.serverDeaf === false && newState.serverDeaf === true) {
+   let serverDeafv = new Discord.MessageEmbed()
+    .setTitle("**VOICE DEAFEN**")
+    .setThumbnail(oldState.user.avatarURL())
+    .setColor("RANDOM")
+    .setDescription(`**User:** <@${oldState.user.id}> (ID: ${oldState.user.id})\n**By:** <@${userID}> (ID: ${userID})\n**Channel:** \`\`${oldState.voiceChannel.name}\`\` (ID:  ${oldState.voiceChannel.id})`)
+    .setTimestamp()
+    .setFooter(userTag, userAvatar);
+   logChannel.send(serverDeafv);
+  }
+  if (oldState.serverDeaf === true && newState.serverDeaf === false) {
+   let serverUndeafv = new Discord.MessageEmbed()
+    .setTitle("**VOICE UNDEAFEN**")
+    .setThumbnail(oldState.user.avatarURL())
+    .setColor("RANDOM")
+    .setDescription(`**User:** <@${oldState.user.id}> (ID: ${oldState.user.id})\n**By:** <@${userID}> (ID: ${userID})\n**Channel:** \`\`${oldState.voiceChannel.name}\`\` (ID: ${oldState.voiceChannel.id})`)
+    .setTimestamp()
+    .setFooter(userTag, userAvatar);
+   logChannel.send(serverUndeafv);
+  }
+ });
 
-    channel.send(embed)
+ if (oldState.voiceChannelID !== newState.voiceChannelID && !oldState.voiceChannel) {
+  let voiceJoin = new Discord.MessageEmbed()
+   .setTitle("**JOIN VOICE ROOM**")
+   .setColor("RANDOM")
+   .setThumbnail(oldState.user.avatarURL())
+   .setDescription(`**\n**:arrow_lower_right: Successfully \`\`JOIN\`\` To Voice Channel.\n\n**Channel:** \`\`${newState.voiceChannel.name}\`\` (ID: ${newState.voiceChannelID})\n**User:** ${oldState} (ID: ${oldState.id})`)
+   .setTimestamp()
+   .setFooter(oldState.user.tag, oldState.user.avatarURL());
+  logChannel.send(voiceJoin);
+ }
+ if (oldState.voiceChannelID !== newState.voiceChannelID && !newState.voiceChannel) {
+  let voiceLeave = new Discord.MessageEmbed()
+   .setTitle("**LEAVE VOICE ROOM**")
+   .setColor("RANDOM")
+   .setThumbnail(oldState.user.avatarURL())
+   .setDescription(`**\n**:arrow_upper_left: Successfully \`\`LEAVE\`\` From Voice Channel.\n\n**Channel:** \`\`${oldState.voiceChannel.name}\`\` (ID: ${oldState.voiceChannelID})\n**User:** ${oldState} (ID: ${oldState.id})`)
+   .setTimestamp()
+   .setFooter(oldState.user.tag, oldState.user.avatarURL());
+  logChannel.send(voiceLeave);
+ }
 
-    }
+ if (oldState.voiceChannelID !== newState.voiceChannelID && newState.voiceChannel && oldState.voiceChannel != null) {
+  let voiceLeave = new Discord.MessageEmbed()
+   .setTitle("**CHANGED VOICE ROOM**")
+   .setColor("RANDOM")
+   .setThumbnail(oldState.user.avatarURL())
+   .setDescription(`**\n**:repeat: Successfully \`\`CHANGED\`\` The Voice Channel.\n\n**From:** \`\`${oldState.voiceChannel.name}\`\` (ID: ${oldState.voiceChannelID})\n**To:** \`\`${newState.voiceChannel.name}\`\` (ID: ${newState.voiceChannelID})\n**User:** ${oldState} (ID: ${oldState.id})`)
+   .setTimestamp()
+   .setFooter(oldState.user.tag, oldState.user.avatarURL());
+  logChannel.send(voiceLeave);
+ }
+} catch (err) {
+ let embed = new Discord.MessageEmbed()
+  .setColor("#FF0000")
+  .setTitle("Error!")
+  .setDescription("**Error Code:** *" + err + "*")
+  .setTimestamp();
+ console.log(err);
+}
 
-  }}
-};
+}

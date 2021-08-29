@@ -1,129 +1,238 @@
-const db = require("quick.db");
-const colors = require("../colors.json");
-const emojis = require("../emoji.json");
-const Enmap = require('enmap');
-const config = require("../config.json");
-const chatbot = require("../util/chat.js");
+var list = require('badwords-list');
+const ms = require("parse-ms");
+const { get } = require('../cc_list_test/sqlite.js') 
 const Discord = require("discord.js");
-const moment = require("moment");
-require("moment-duration-format");
+const antiLink = require("anti-link-discord")
+const AntiSpam = require("discord-anti-spam");
+var profanity = require("profanity-hindi");
+module.exports = async (client, message) => {
+  this.client = client;
+  const db = require("quick.db");
+if(message.channel.type === 'dm') {
+return;
+}
+    if(message.author.bot){
+			return;
+		}
 
-module.exports = async (xtal, message) => {
-  
-  if (message.author.bot) return;
-
-  let prefix;
-  if(message.channel.type == 'text') {
-  let gprefix = await db.fetch(`guildPrefix_${message.guild.id}`);
-  if(gprefix === null) gprefix = 'x?';
-  prefix = gprefix;
-  } else {
-    prefix = `x?`;
-  }
-  
-  xtal.prefix = prefix;
-
-  const prefixMention = new RegExp(`^<@!?${xtal.user.id}>( |)$`);
-  if (message.content.match(prefixMention)) {
-  xtal.simpleEmbed(message, `My prefix on this guild is \`${xtal.prefix}\``);
-  }
-  
-  if (message.guild && message.channel.type == 'text') {
-    require("../util/word")(message, xtal);
-    require("../util/invite")(message, xtal);
-    require("../util/spam")(message, xtal);
-    require("../util/mention")(message, xtal);
-    require("../util/emoji")(message, xtal);
-    require("../util/links")(message, xtal);
-
-    //Custom Tags
-    xtal.tags = new Enmap({
-      name: "tags",
-      fetchAll: false,
-      autoFetch: true,
-      cloneLevel: 'deep'
-    });
-
-    if (xtal.tags.has(message.guild.id)) {
-      Object.keys(xtal.tags.get(message.guild.id)).forEach(tagid => {
-        let tag = xtal.tags.get(message.guild.id)[tagid];
-        if(tag.name) {
-        if (message.content.toLowerCase() == tag.name.toLowerCase()) message.channel.send(tag.text.replace('@user', '<@' + message.author.id + '>'));
-      }});
+     var prefix = db.fetch(`guildprefix_${message.guild.id}`);
+   if(!prefix)
+   {
+     var prefix = client.config.prefix;
+   
+}
+if(await db.has(`swear-${message.guild.id}`) === true){ 
+    var words = list.array;
+      var isDirty = profanity.isMessageDirty(message.content);
+    if(isDirty == true){
+      message.delete();
+        message.channel.send(`${message.author} Do not use bad words.`) .then(m => m.delete({ timeout : 3000 }))
+        return;
     }
+    var customwords = ["bc", "mc", "bhosda", "lond", "loda", "louda", "lund", "randi", "mkc", "mkb", "tmkc", "bsdk", "bhosdike"];
+  
+    for (let i = 0; i < words.length; i++) {
+        if(message.content.includes(customwords[i])){
+      message.delete();
+          message.channel.send(`${message.author} Do not use bad words.`)
+          .then(m => m.delete({ timeout : 3000 }))
+          return;
+    }
+        if(message.content.includes(words[i])) {
+            message.delete();
+            message.channel.send(`${message.author} Do not use bad words.`)
+                .then(m => m.delete({ timeout : 3000 }))
+        }
+    }
+  
+}
+
+let chatbot = db.fetch(`chatbotc_${message.guild.id}`);
+
+  const args = message.content.slice(prefix.length).trim().split(/ +/g);
+ let name = message.content.toLowerCase();
+if(db.has(`${name}_${message.guild.id}`))
+{
+  let gettingreply = db.fetch(`${name}_${message.guild.id}`);
+  
+  
+     message.channel.send(gettingreply)
+  
+}
+ 
+     if (db.has(`${message.guild.id}_${message.author.id}` + '.afk')) {
+       message.member.setNickname('').catch(error => message.channel.send("Couldn't update your nickname."));
+       message.reply("Oh you're back ! i removed your afk");
+        db.delete(`${message.guild.id}_${message.author.id}` + '.afk')
+        db.delete(`${message.guild.id}_${message.author.id}` + '.messageafk')
+      }
+        message.mentions.users.forEach(user => {
+           if(user.id == client.user.id){
+             message.channel.send(`My Prefix for This Server is ${prefix}`)
+           }
+        if (db.has(`${message.guild.id}_${user.id}` + '.afk')) 
+        {
+             let messageafk2 =  db.fetch(`${message.guild.id}_${user.id}` + '.messageafk');
+            message.reply(`the user ${user.tag}  is afk ! Reason: ${messageafk2} `);
+        }
+    })   
+
+
+if(message.channel.id == chatbot)
+{
+  
+     return client.util.handleTalk(message);
+}
+
+     const hehe = db.fetch(`antilink_${message.guild.id}`);
+      if(message.member && message.member.hasPermission('MANAGE_MESSAGES'))
+       {
+       }
+       else {
+     if(hehe == "on")
+     {
+   
+  if (message.content.includes("http://")) {
+   message.channel.send("Only https certified links allowed!!!")
+    message.delete();
+  }
+ 
+    if (message.content.includes("discord.gg/")) {
+       message.channel.send("No  Server invites allowed!!!")
+       message.delete();
+  }
+  if (message.content.includes("Discord.gg/")) {
+       message.channel.send("No  Server invites allowed!!!")
+       message.delete();
+  
+     }
+       }
+       }
+
+     if(db.has(`globalchat_${message.guild.id}`))
+{
+ 
+  if(message.channel.id == channelto)
+  {
+    if (message.content.includes("http://")) {
+   message.channel.send("Only https certified links allowed!!!")
+    return message.delete();
+  }
+ 
+    if (message.content.includes("discord.gg/")) {
+       message.channel.send("No  Server invites allowed!!!")
+       return message.delete();
+  }
+  if (message.content.includes("Discord.gg/")) {
+       message.channel.send("No  Server invites allowed!!!")
+       return message.delete();
+  
+     }
+      if (message.content.includes("dsc.gg/")) {
+       message.channel.send("No  Server/Bot invites allowed!!!")
+       return message.delete();
+  
+     }
+      if (message.content.includes("Dsc.gg/")) {
+       message.channel.send("No  Server/Bot invites allowed!!!")
+       return message.delete();
+  
+     }
+    message.delete()
+    const messageembed = new Discord.MessageEmbed()
+    .setAuthor(`Message Sended`)
+    .setThumbnail(message.author.displayAvatarURL({dynamic: true}))
+    .setFooter(`Author: ${message.author.username} | Guild: ${message.guild.name}`)
+    if(message.content.includes("tenor"))
+    {
+      let image = message.content;
+      messageembed.setImage(message.content)
+    }
+    else { messageembed.setDescription(`${message.content}`)
+    }
+    message.channel.send(messageembed)
+    client.guilds.cache.forEach(guild => {
+         if(db.has(`globalchat_${guild.id}`))
+         {
+           var channel = db.fetch(`globalchat_${guild.id}`)
+           if(message.guild.id == guild.id) 
+           {
+             return;
+           }
+           var channel = guild.channels.cache.get(channel);
+           if(!channel) {
+             return;
+           }
+              const messageembed1 = new Discord.MessageEmbed()
+    .setAuthor(`New Message!`)
+       .setThumbnail(message.author.displayAvatarURL({dynamic: true}))
+    .setFooter(`Author: ${message.author.username} | Guild: ${message.guild.name}`)
+    if(message.content.includes("tenor"))
+    {
+      let image = message.content;
+      messageembed1.setImage(message.content)
+    }
+    else { messageembed1.setDescription(`${message.content}`)
+    }
+     channel.send(messageembed1)
+         }
+         else {
+           return;
+         }
+    })
+ return;
+  }
+  
+} 
+   
+  
+   
+  const cmd = args.shift().toLowerCase();
     
-    let chat = await db.fetch(`guildChat_${message.guild.id}`);
-    if (message.channel.id === chat) {
-      message.channel.startTyping();
-      message.reply(await chatbot(message.content, message.author.username));
-      message.channel.stopTyping();
-    }
+
+    let command = client.commands.get(cmd)
+    
+      if(!command)
+       {
+           
+       let user = message.author;
+       let timeout = "2000";
+        var weekly =  db.fetch(`messagee_${message.guild.id}_${user.id}`);
+   if (weekly !== null && timeout - (Date.now() - weekly) > 0) {
+    let time = ms(timeout - (Date.now() - weekly));
+   } else {
+ db.add(`messages_${message.guild.id}_${user.id}`, 1); 
+ let messagefetch = db.fetch(`messages_${message.guild.id}_${user.id}`); 
+   let messages;
+  if (messagefetch == 25) messages = 25; //Level 1
+  else if (messagefetch == 65) messages = 65; // Level 2
+  else if (messagefetch == 115) messages = 115; // Level 3
+  else if (messagefetch == 200) messages = 200; // Level 4
+  else if (messagefetch == 300) messages = 300; // Level 5
+   db.set(`messagee_${message.guild.id}_${user.id}`, Date.now());
+  if (!isNaN(messages)) {
+    db.add(`level_${message.guild.id}_${message.author.id}`, 1)
+    let levelfetch = db.fetch(`level_${message.guild.id}_${message.author.id}`)
+  
   }
-  
-  if(message.content.indexOf(prefix) !== 0) return;
-  let Args = message.content.split(/\s+/g);
-  const command = Args.shift().slice(prefix.length).toLowerCase();
+   }     
+ if(message.content.includes("dumb"))
+ {
+     var weekly =  db.fetch(`bov_${message.member.id}`);
+   if (weekly !== null && timeout - (Date.now() - weekly) > 0) {
+   } else {
 
-  const cmd = xtal.commands.get(command) || xtal.commands.get(xtal.aliases.get(command));
-
-  if (!cmd) return;
-
-if(cmd.conf.guildOnly && !message.guild){
-    return xtal.simpleEmbed(message, `\`\`${cmd.help.name}\`\` can only be used in **Guilds/Servers**`);
+ 
+   db.add(`broov_${message.member.id}`, 1);
+     db.set(`bov_${message.member.id}`, Date.now());
+   }
+ }
+ 
+       }
+       let data = await get(message, message.guild) 
+       if (message.content.indexOf(prefix) !== 0) return;
+    if(!command) command = client.commands.get(client.aliases.get(cmd));
+    
+    if(command) command.execute(client, message, args, data); 
+    
 }
-  
-if (message.guild) {
-  xtal.disabledcmd.ensure(message.guild.id, []);
-  if(xtal.disabledcmd.get(message.guild.id).includes(cmd.help.name)) return xtal.simpleEmbed(message, `\`\`${cmd.help.name}\`\` has been **Disabled** on this Guild.`);
-}
-
-if(cmd.conf.category.toLowerCase() == "botowner" && !config.ownerID.includes(message.author.id)) return xtal.simpleEmbed(message, "You aren\'t the Bot Owner!");
-
-if (!xtal.cooldowns.has(cmd.help.name)) {
-	xtal.cooldowns.set(cmd.help.name, new Discord.Collection());
-}
-
-const now = Date.now();
-const timestamps = xtal.cooldowns.get(cmd.help.name);
-const cooldownAmount = (cmd.conf.cooldown || 3) * 1000;
-  if (timestamps.has(message.author.id)) {
-	const expirationTime = timestamps.get(message.author.id) + cooldownAmount;
-
-	if (now < expirationTime) {
-    const timeLeftduration = moment.duration((expirationTime - now)).format(" D [days], H [hrs], m [mins], s [secs]");
-		return xtal.simpleEmbed(message, `Please wait **${timeLeftduration}** more second(s) before reusing the \`${cmd.help.name}\` command.`);
-	}
-}
-
-  if (message.guild) {
-  let memberPermissions = xtal.commands.get(cmd.conf.memberPermissions) || [];
-  let botPermissions = xtal.commands.get(cmd.conf.botPermissions) || ["SEND_MESSAGES", "EMBED_LINKS"];
-
-  if(!message.member.hasPermission(memberPermissions)) return xtal.noPerms(message, memberPermissions);
-  if(!message.guild.me.hasPermission(memberPermissions)) return xtal.xnoPerms(message, botPermissions);
-}
-  
-  let modonly = await db.fetch(`guildModOnly_${message.guild.id}`);
-  if(modonly == null) modonly = false;
-  if(message.guild && modonly == true) {
-    if(!message.member.hasPermission('MANAGE_GUILD')) return;
-  }
-  
-  xtal.cmdsRan.ensure(`cmdsRan_${message.author.id}`, 0);
-  xtal.cmdsRan.ensure(`cmdsRan_GLOBAL`, 0);
-  xtal.cmdsRan.inc(`cmdsRan_${message.author.id}`);
-  xtal.cmdsRan.inc(`cmdsRan_GLOBAL`);
-
-  message.flags = [];
-  Args.forEach((arg, i) => {
-    if(arg.startsWith("-")) message.flags.push(arg)
-  });
-  
-  const args = Args.filter(word => !message.flags.includes(word));
-
-  cmd.run(xtal, message, args, colors, emojis);
-
-  timestamps.set(message.author.id, now);
-  setTimeout(() => timestamps.delete(message.author.id), cooldownAmount);
-
-};

@@ -1,40 +1,26 @@
-const YouTube = require('simple-youtube-api');
-const ytdl = require('ytdl-core');
-const youtube = new YouTube(process.env.YTTOKEN);
 const Discord = require("discord.js");
-
-exports.run = async (xtal, message, args, colors) => {
-  
-  try {
-  const serverQueue = xtal.queue.get(message.guild.id);
-  if (!serverQueue) return message.channel.send('There is nothing playing.');
-  let musicno = 0;
-  let currentplaying;
-  if(serverQueue.songs[musicno]) currentplaying = `**[${serverQueue.songs[musicno].title}](${serverQueue.songs[musicno].url})**`
-  else currentplaying = `Cannot Determine that`;
-  let str = [];
-
-  for(const songs of serverQueue.songs) {
-    str.push(`[${songs.title}](${songs.url})`);
-  }
-
-  if (str.length !== 0) {
-    xtal.rrPage(message, str, 15, `Song Queue of ${message.guild.name}`)
-  } else {
-    return xtal.simpleEmbed(message, 'There is nothing playing.');
-  }
-} catch(e) {}
-
-};
-
-exports.help = {
+const db = require("quick.db");
+module.exports = {
   name: "queue",
-  aliases: ['qu']
-};
+  aliases: ["q"],
+  execute: async(client, message, args, data, db) => { 
 
-exports.conf = {
-  usage: "queue",
-  aliases: "qu",
-  description: "Shows the Current Queue.",
-  category: "Music"
-};
+
+
+        const { guild, channel } = message;
+        const serverQueue = message.client.queue.get(guild.id);
+        if (!serverQueue) return channel.send('There is currently no queue in this guild.');
+        let i = 0;
+        return message.channel.send([
+            '__**Music Queue**__',
+            serverQueue.songs.map(song => `**${++i}.** ${song.title}`).join('\n'),
+        ].join('\n'));
+    }
+  }
+
+module.exports.help = {
+    name: "queue",
+    description: "will give you queue of your songs",
+    usage: "queue",
+    type: "Music" 
+}

@@ -1,35 +1,33 @@
-const db = require("quick.db");
-const colors = require("../colors.json");
-const Discord = require("discord.js");
+const Discord = require('discord.js');
+const config = require("../config");
 
-module.exports = async (xtal, message) => {
-  
-  if (message.author.bot) return;
-  if (!message.guild) return;
-  
-  let construct = {
-    user: message.author.tag,
-    avatar: message.author.displayAvatarURL,
-    content: message.content
+module.exports = async (client, message) => {
+ try {
+  if(message.author.bot) return;
+  if(message.channel.type === 'dm') return;
+  if (!message.guild.member(client.user).hasPermission("EMBED_LINKS", "VIEW_CHANNEL", "READ_MESSAGE_HISTORY", "VIEW_AUDIT_LOG", "SEND_MESSAGES")) return;
+  const log = message.guild.channels.cache.find(log => log.name === "dumb-logs")
+  if(!log) return;
+  if(log.type !== "text") return;
+  if (!log.guild.member(client.user).hasPermission("EMBED_LINKS", "VIEW_CHANNEL", "READ_MESSAGE_HISTORY", "VIEW_AUDIT_LOG", "SEND_MESSAGES")) return;
+  if(log) {
+   const final = message.toString().substr(0, 500); // Limit characters
+   const event = new Discord.MessageEmbed()
+    .setTitle(`Message Deleted`)
+    .setColor('RANDOM')
+    .setThumbnail(message.author.avatarURL())
+    .addField("Channel", `<#${message.channel.id}> (ID: ${message.channel.id})`)
+    .addField("Message ID", `${message.id}`)
+    .addField("Created at", `${message.createdAt}`)
+    .addField("TTS", `${message.tts}`)
+    .addField("Pinned", `${message.pinned}`)
+    .addField("Send By", `<@${message.author.id}> (ID: ${message.author.id})`)
+    .addField("Message", "\`\`\`" + `${final}` + "\`\`\`")
+    .setTimestamp()
+    .setFooter(message.guild.name, message.guild.iconURL())
+   log.send(event)
   }
-
-  await db.set(`guildMessageDelete_${message.channel.id}`, construct);
-  let mod = await db.fetch(`guildLogs_${message.guild.id}`);
-  if(mod == null || mod == 'None.') return;
-  else {
-  let channel = xtal.channels.get(mod);
-  if(channel) {
-  let embed = new Discord.RichEmbed()
-  .setTitle('Message Deleted')
-  .setThumbnail(message.author.avatarURL)
-  .setTimestamp()
-  .addField('Content', `${message.content}`)
-  .addField('Author', `${message.author} | ${message.author.tag} | ${message.author.id}`)
-  .addField('Channel', `${message.channel} | ${message.channel.name} | ${message.channel.id}`)
-  .setColor(colors.red)
-  .setFooter(xtal.user.username, xtal.user.avatarURL);
-  
-  channel.send(embed)
-
-  }}
-};
+ } catch (err) {
+  console.log(err);
+ }
+}

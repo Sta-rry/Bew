@@ -1,39 +1,24 @@
-const YouTube = require('simple-youtube-api');
-const ytdl = require('ytdl-core');
-const youtube = new YouTube(process.env.YTTOKEN);
-
-
-exports.run = async (xtal, message, args) => {
-  
-  try {
-  const serverQueue = xtal.queue.get(message.guild.id);
-  if (!message.member.voiceChannel || (message.guild.me.voiceChannel && message.guild.me.voiceChannel !== message.member.voiceChannel)) return message.channel.send('You are not in a voice channel!');
-  if (!serverQueue) return message.channel.send('There is nothing playing that I could Shuffle for you.');
-  if(serverQueue.songs.length == 1) return xtal.simpleEmbed(message, `I can\'t Shuffle a Queue with a Song.`);
-  const np = serverQueue.songs.shift();
-  shuffle(serverQueue.songs);
-  shuffle(serverQueue.songs);
-  shuffle(serverQueue.songs);
-  serverQueue.songs.unshift(np);
-  xtal.queue.set(message.guild.id, serverQueue);
-  xtal.simpleEmbed(message, 'Queue **Shuffled.**')
-  } catch(e) {
-
-  }
-  
-};
-
-exports.help = {
+module.exports = {
   name: "shuffle",
-  aliases: ['sh']
-};
-
-exports.conf = {
-  usage: "shuffle",
-  description: "Shuffles the Song Queue.",
-  category: "Music"
-};
-
-function shuffle(array) {
-  array.sort(() => Math.random() - 0.5);
+  aliases: ["mix"],
+  execute: async(client, message, args, data, db) => {
+    const channel = message.member.voice.channel;
+    if (!channel) return message.channel.send('You should join a voice channel before using this command!');
+    const queue = message.client.queue.get(message.guild.id)
+    if(!queue) return message.channel.send('There are no songs in queue to shuffle')
+    let songs = queue.songs;
+    for (let i = songs.length - 1; i > 1; i--) {
+      let j = 1 + Math.floor(Math.random() * i);
+      [songs[i], songs[j]] = [songs[j], songs[i]];
+    }
+    queue.songs = songs;
+    message.client.queue.set(message.guild.id, queue);
+    message.channel.send(`Shuffled the current queue 🔀`).catch(console.error);
+}
+}
+module.exports.help = {
+    name: "shuffle",
+    description: "Will shuffle/mix your queue",
+    usage: "shuffle",
+    type: "Music" 
 }
